@@ -46,6 +46,5 @@ A diferencia de aplicaciones básicas, **ChainArena** implementa:
 * **Program ID:** `54N5nsEJgPWf4ghPn6teZrseTxLo7wr1vBMLGhruVgx`
 * **Network:** Solana Devnet
 
----
-###  Video Demo
-[Inserta aquí tu link de Loom]
+--
+
