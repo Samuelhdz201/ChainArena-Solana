@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChainArena — Esports on Solana</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet"/>
+  
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+
+  <style>
+    :root {
+      --sol-purple: #9945FF; --sol-green: #14F195; --sol-blue: #00C2FF;
+      --dark: #0a0a0f; --dark2: #0f0f1a; --dark3: #141428;
+      --card: rgba(255,255,255,0.04); --border: rgba(153,69,255,0.25);
+      --text: #e8e8f0; --muted: #6b6b8a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--dark); color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 16px; overflow-x: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(153,69,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(153,69,255,0.04) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; }
+    .orb1 { width: 500px; height: 500px; background: rgba(153,69,255,0.12); top: -100px; left: -100px; }
+    .orb2 { width: 400px; height: 400px; background: rgba(20,241,149,0.07); bottom: -50px; right: -50px; }
+    
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; height: 64px; background: rgba(10,10,15,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+    .logo { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.2rem; letter-spacing: 2px; background: linear-gradient(135deg, var(--sol-purple), var(--sol-green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-badge { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--sol-green); text-transform: uppercase; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sol-green); animation: pulse 2s infinite; }
+    .btn-wallet { padding: 8px 20px; background: rgba(153,69,255,0.15); border: 1px solid var(--border); border-radius: 8px; color: var(--sol-purple); font-weight: 700; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
+    .btn-wallet.connected { color: var(--sol-green); border-color: rgba(20,241,149,0.3); background: rgba(20,241,149,0.08); }
+
+    .hero { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 100px 2rem 4rem; }
+    .hero h1 { font-family: 'Orbitron', monospace; font-weight: 900; font-size: clamp(2.5rem, 8vw, 6rem); line-height: 1; margin-bottom: 1rem; }
+    .hero h1 span { background: linear-gradient(135deg, var(--sol-purple), var(--sol-green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-sub { color: var(--muted); max-width: 600px; margin-bottom: 2rem; font-size: 1.1rem; }
+
+    section { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 5rem 2rem; }
+    .section-tag { color: var(--sol-purple); font-weight: 700; letter-spacing: 2px; font-size: 0.8rem; margin-bottom: 1rem; }
+    
+    .tournaments { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .t-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; transition: 0.3s; animation: fadeIn 0.5s ease-out; }
+    .t-card:hover { border-color: var(--sol-purple); transform: translateY(-5px); }
+    .t-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .t-status { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .t-status.open { background: rgba(20,241,149,0.1); color: var(--sol-green); border: 1px solid var(--sol-green); }
+    .t-status.live { background: rgba(255,0,0,0.1); color: #ff4444; border: 1px solid #ff4444; }
+    
+    .oracle-card { background: var(--dark2); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; }
+    .verify-demo { background: rgba(0,0,0,0.2); border-radius: 15px; padding: 1.5rem; border: 1px solid var(--border); }
+    
+    .form-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem; margin-top: 2rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .form-group label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--sol-purple); margin-bottom: 8px; text-transform: uppercase; }
+    .form-group input, .form-group select { width: 100%; padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; color: white; outline: none; }
+    
+    .btn-primary { padding: 14px 32px; background: linear-gradient(135deg, var(--sol-purple), var(--sol-blue)); border: none; border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; transition: 0.3s; text-transform: uppercase; width: 100%; }
+    .toast { position: fixed; bottom: 2rem; right: 2rem; z-index: 999; padding: 1rem; border-radius: 12px; background: var(--dark3); border: 1px solid var(--border); transform: translateY(100px); opacity: 0; transition: 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+
+  <nav>
+    <div class="logo">CHAIN ARENA</div>
+    <div class="nav-right">
+      <div class="nav-badge"><div class="dot"></div>Devnet Live</div>
+      <button class="btn-wallet" id="walletBtn" onclick="connectWallet()">Conectar Wallet</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="section-tag">⚡ Built on Solana · Powered by Anchor</div>
+    <h1>ESPORTS<br/><span>ON-CHAIN</span></h1>
+    <p class="hero-sub">La primera plataforma de torneos competitivos verificados en Solana. Prize pools transparentes. Resultados verificados con Riot API.</p>
+  </div>
+
+  <section id="tournaments-section">
+    <div class="section-tag">// Torneos Activos</div>
+    <h2 style="font-family:'Orbitron'">Live on Devnet</h2>
+    <div class="tournaments" id="tournamentContainer">
+      <div class="t-card">
+        <div class="t-header">
+          <div><strong>League of Legends</strong><br/><small style="color:var(--muted)">LATAM · 5v5</small></div>
+          <div class="t-status open">Open</div>
+        </div>
+        <p style="margin-bottom:1rem">ChainArena Weekly #1</p>
+        <div style="display:flex; justify-content:space-between; color:var(--sol-green); font-weight:700; margin-bottom:1rem">
+          <span>0.8 SOL Pool</span>
+          <span>0.1 SOL Entry</span>
+        </div>
+        <button class="btn-primary" onclick="registerPlayer('Weekly #1', 0.1)">Registrarse</button>
+      </div>
+      
+      <div class="t-card">
+        <div class="t-header">
+          <div><strong>Valorant</strong><br/><small style="color:var(--muted)">LATAM · 5v5</small></div>
+          <div class="t-status live">Live</div>
+        </div>
+        <p style="margin-bottom:1rem">Solana Cup Invitational</p>
+        <div style="display:flex; justify-content:space-between; color:var(--sol-green); font-weight:700; margin-bottom:1rem">
+          <span>1.6 SOL Pool</span>
+          <span>0.1 SOL Entry</span>
+        </div>
+        <button class="btn-primary" style="opacity:0.5" disabled>En Progreso</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="oracle">
+    <div class="section-tag">// Arquitectura del Oracle</div>
+    <h2 style="font-family:'Orbitron'">Trust-minimized verification</h2>
+    <div class="oracle-card">
+      <div>
+        <p style="color:var(--muted); line-height:1.6">El oracle es un backend firmante que consulta la Riot Games API y envía el resultado al smart contract.</p>
+        <ul style="margin-top:1rem; list-style:none; color:var(--text)">
+          <li>🎮 Jugadores terminan partida</li>
+          <li>🔍 Oracle consulta Riot API</li>
+          <li>⚡ Smart contract libera fondos</li>
+        </ul>
+      </div>
+      <div class="verify-demo">
+        <h4 style="color:var(--sol-green); margin-bottom:1rem">// Demo: Simular Verificación</h4>
+        <input type="text" id="p1" value="Faker" style="width:100%; padding:8px; margin-bottom:10px; background:rgba(255,255,255,0.1); border:1px solid var(--border); color:white">
+        <input type="text" id="p2" value="Caps" style="width:100%; padding:8px; margin-bottom:10px; background:rgba(255,255,255,0.1); border:1px solid var(--border); color:white">
+        <button class="btn-primary" onclick="simulateVerify()">Verificar Demo</button>
+        <div id="verifyResult" style="margin-top:10px; font-size:0.8rem"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="create">
+    <div class="section-tag">// Crear Torneo</div>
+    <h2 style="font-family:'Orbitron'">Deploy your tournament</h2>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="form-group"><label>Nombre</label><input type="text" id="tName" value="Lolcitorico"/></div>
+        <div class="form-group"><label>Juego</label><select id="tGame"><option>League of Legends</option><option>Valorant</option></select></div>
+        <div class="form-group"><label>Entry Fee (SOL)</label><input type="number" id="tFee" value="0.1" step="0.01"/></div>
+        <div class="form-group"><label>Max Jugadores</label><select id="tMax"><option value="8">8 jugadores</option><option value="16">16 jugadores</option></select></div>
+      </div>
+      <button class="btn-primary" onclick="createTournament()">⚡ Crear Torneo On-Chain</button>
+      <div id="createResult" style="margin-top:1.5rem; display:none; padding:15px; border-radius:10px;"></div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const BACKEND = 'http://localhost:3001';
+    let walletPublicKey = null;
+    const connection = new solanaWeb3.Connection("https://api.devnet.solana.com", "confirmed");
+
+    function showToast(msg, type = 'info') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.borderColor = type === 'success' ? '#14F195' : '#9945FF';
+      t.className = `toast show`;
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    async function connectWallet() {
+      if (!window.solana || !window.solana.isPhantom) {
+        showToast('⚠️ Instala Phantom Wallet', 'error'); return;
+      }
+      try {
+        const resp = await window.solana.connect();
+        walletPublicKey = resp.publicKey.toString();
+        document.getElementById('walletBtn').textContent = '✅ ' + walletPublicKey.slice(0,4) + '...' + walletPublicKey.slice(-4);
+        showToast('Wallet Conectada', 'success');
+      } catch (err) { console.error(err); }
+    }
+
+    async function createTournament() {
+      if (!walletPublicKey) { showToast('⚠️ Conecta tu wallet', 'error'); return; }
+      
+      const name = document.getElementById('tName').value;
+      const game = document.getElementById('tGame').value;
+      const fee = parseFloat(document.getElementById('tFee').value);
+      const res = document.getElementById('createResult');
+      
+      res.style.display = 'block'; res.style.background = 'rgba(153,69,255,0.1)'; res.textContent = '⏳ Llamando a Phantom...';
+      
+      try {
+        const health = await fetch(`${BACKEND}/health`);
+        const config = await health.json();
+        
+        const transaction = new solanaWeb3.Transaction().add(
+          solanaWeb3.SystemProgram.transfer({
+            fromPubkey: new solanaWeb3.PublicKey(walletPublicKey),
+            toPubkey: new solanaWeb3.PublicKey(config.program),
+            lamports: solanaWeb3.LAMPORTS_PER_SOL * 0.01,
+          })
+        );
+
+        transaction.feePayer = new solanaWeb3.PublicKey(walletPublicKey);
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        
+        const { signature } = await window.solana.signAndSendTransaction(transaction);
+        res.textContent = '🚀 Confirmando en la Red...';
+        await connection.confirmTransaction(signature);
+        
+        res.style.background = 'rgba(20,241,149,0.1)';
+        res.innerHTML = `✅ <strong>¡Éxito!</strong> Torneo creado on-chain.<br/>TX: ${signature.slice(0,15)}...`;
+        
+        // AGREGAR DINÁMICAMENTE A LA LISTA (OPCIÓN 1)
+        const container = document.getElementById('tournamentContainer');
+        const card = document.createElement('div');
+        card.className = 't-card';
+        card.innerHTML = `
+          <div class="t-header">
+            <div><strong>${game}</strong><br/><small style="color:var(--muted)">LATAM · 5v5</small></div>
+            <div class="t-status open">Open</div>
+          </div>
+          <p style="margin-bottom:1rem">${name}</p>
+          <div style="display:flex; justify-content:space-between; color:var(--sol-green); font-weight:700; margin-bottom:1rem">
+            <span>${(fee * 8).toFixed(1)} SOL Pool</span>
+            <span>${fee} SOL Entry</span>
+          </div>
+          <button class="btn-primary" onclick="registerPlayer('${name}', ${fee})">Registrarse</button>
+        `;
+        container.prepend(card);
+        showToast('🏆 Torneo listado!', 'success');
+
+      } catch (err) { res.style.background = 'rgba(255,0,0,0.1)'; res.textContent = '❌ Error: ' + err.message; }
+    }
+
+    async function registerPlayer(tournamentName, feeSol) {
+      if (!walletPublicKey) { showToast('⚠️ Conecta tu wallet', 'error'); return; }
+      showToast(`⚡ Firmando registro para ${tournamentName}...`, 'info');
+      
+      try {
+        const transaction = new solanaWeb3.Transaction().add(
+          solanaWeb3.SystemProgram.transfer({
+            fromPubkey: new solanaWeb3.PublicKey(walletPublicKey),
+            toPubkey: new solanaWeb3.PublicKey("54N5nsEJgPWf4ghPn6teZrseTxLo7wr1vLBMLGhruVgx"), 
+            lamports: solanaWeb3.LAMPORTS_PER_SOL * feeSol,
+          })
+        );
+        transaction.feePayer = new solanaWeb3.PublicKey(walletPublicKey);
+        transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+        
+        const { signature } = await window.solana.signAndSendTransaction(transaction);
+        showToast('🚀 Procesando pago...', 'info');
+        await connection.confirmTransaction(signature);
+        showToast('✅ ¡Registrado con éxito!', 'success');
+      } catch (e) { showToast('❌ Error en el registro', 'error'); }
+    }
+
+    async function simulateVerify() {
+      const res = document.getElementById('verifyResult');
+      res.textContent = '⏳ Consultando oracle...';
+      try {
+        const fetchRes = await fetch(`${BACKEND}/api/simulate-verify`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({player1Summoner: document.getElementById('p1').value, player2Summoner: document.getElementById('p2').value})
+        });
+        const data = await fetchRes.json();
+        res.innerHTML = `🏆 Ganador: <span style="color:var(--sol-green)">${data.winner}</span><br/>Match: ${data.matchId}`;
+        showToast(`🏆 ${data.winner} ha ganado!`, 'success');
+      } catch (e) { res.textContent = '❌ Backend Offline'; }
+    }
+  </script>
+</body>
+</html>
